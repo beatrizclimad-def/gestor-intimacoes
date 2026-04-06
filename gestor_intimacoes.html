@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestor de Intimações — 3ª Defensoria Cível de Parnamirim</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Calibri,Arial,sans-serif;font-size:13px;background:#fdf4f9;color:#222;min-height:100vh}
+.app-header{background:linear-gradient(135deg,#e8628a,#c459a0);color:#fff;text-align:center;padding:18px 20px}
+.app-header h1{font-size:17px;font-weight:600;margin-bottom:3px}
+.app-header p{font-size:12px;opacity:.88}
+nav{display:flex;gap:0;background:#fff;border-bottom:1.5px solid #f0c0d8;overflow-x:auto;position:sticky;top:0;z-index:50}
+nav button{background:none;border:none;border-bottom:2.5px solid transparent;color:#888;font-size:12px;padding:11px 15px;cursor:pointer;white-space:nowrap;font-family:inherit}
+nav button.active{color:#c459a0;border-bottom-color:#c459a0;font-weight:600}
+nav button:hover{background:#fdf4f9}
+.tab{display:none;padding:16px;max-width:1400px;margin:0 auto}
+.tab.active{display:block}
+.toast{position:fixed;bottom:24px;right:24px;background:#222;color:#fff;padding:10px 18px;border-radius:8px;font-size:12px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+.sync-bar{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #f0c0d8;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px}
+.sync-bar input{flex:1;padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:12px;font-family:inherit}
+.sync-bar label{color:#888;white-space:nowrap}
+.sync-status{font-size:11px;padding:3px 9px;border-radius:99px;font-weight:600}
+.sync-ok{background:#e8f5e9;color:#2e7d32}
+.sync-err{background:#fce4ec;color:#c62828}
+.sync-pend{background:#fff8e1;color:#f57f17}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.filters input,.filters select{padding:6px 10px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#222;font-size:12px;font-family:inherit}
+.filters input{flex:1;min-width:180px}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#333;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn:hover{background:#fdf4f9;border-color:#e8628a;color:#c459a0}
+.btn-pink{background:#c459a0;border-color:#c459a0;color:#fff}
+.btn-pink:hover{background:#b04090;border-color:#b04090;color:#fff}
+.tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid #f0c0d8;box-shadow:0 1px 6px rgba(196,89,160,.07)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:12px;min-width:900px}
+th{background:#fdf4f9;color:#888;font-weight:600;font-size:11px;padding:9px 10px;text-align:left;border-bottom:1.5px solid #f0c0d8;cursor:pointer;white-space:nowrap;user-select:none}
+th:hover{color:#c459a0}
+td{padding:7px 10px;border-bottom:1px solid #fce4ec;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fdf4f9}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600}
+.badge-venc{background:#fce4ec;color:#c62828}
+.badge-pend{background:#fff8e1;color:#f57f17}
+.badge-ok{background:#e8f5e9;color:#2e7d32}
+.badge-perto{background:#e3f2fd;color:#1565c0}
+.badge-conc{background:#e8f5e9;color:#2e7d32}
+.badge-and{background:#e3f2fd;color:#1565c0}
+.badge-ab{background:#fff8e1;color:#f57f17}
+.badge-nao{background:#fce4ec;color:#c62828}
+.act-btn{padding:3px 9px;border:1px solid #ddd;border-radius:5px;background:#fff;color:#555;font-size:11px;cursor:pointer;margin:1px;font-family:inherit}
+.act-btn:hover{border-color:#e8628a;color:#c459a0;background:#fdf4f9}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+.metric-card{background:#fff;border:1px solid #f0c0d8;border-radius:10px;padding:14px 16px}
+.metric-card .val{font-size:26px;font-weight:700;line-height:1.2}
+.metric-card .lbl{font-size:11px;color:#888;margin-bottom:6px}
+.metric-card.pink .val{color:#c459a0}
+.metric-card.red .val{color:#c62828}
+.metric-card.amber .val{color:#f57f17}
+.metric-card.green .val{color:#2e7d32}
+.metric-card.blue .val{color:#1565c0}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:#fff;border-radius:12px;border:1px solid #f0c0d8;padding:22px;width:90%;max-width:540px;max-height:88vh;overflow-y:auto}
+.modal-box h3{font-size:15px;font-weight:600;margin-bottom:16px;color:#c459a0}
+.form-row{margin-bottom:11px}
+.form-row label{display:block;font-size:11px;color:#888;margin-bottom:3px;font-weight:600}
+.form-row input,.form-row select,.form-row textarea{width:100%;padding:7px 10px;border:1px solid #ddd;border-radius:6px;background:#fafafa;color:#222;font-size:12px;font-family:inherit}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{outline:none;border-color:#c459a0;background:#fff}
+.form-row textarea{resize:vertical;min-height:70px}
+.form-row input[readonly]{background:#f5f5f5;color:#888}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid #f0c0d8}
+.alert-banner{background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#f57f17}
+.pend-count{background:#c459a0;color:#fff;border-radius:99px;padding:1px 8px;font-size:11px;margin-left:4px}
+.section-title{font-size:13px;font-weight:600;margin-bottom:12px;color:#555}
+.chart-area{background:#fff;border:1px solid #f0c0d8;border-radius:10px;padding:16px;margin-bottom:14px}
+.chart-area h4{font-size:12px;color:#888;margin-bottom:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:12px}
+.bar-lbl{min-width:110px;color:#555;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{flex:1;height:16px;background:#fdf4f9;border-radius:99px;overflow:hidden}
+.bar-fill{height:100%;border-radius:99px;transition:width .4s}
+.bar-num{min-width:26px;text-align:right;font-weight:600;color:#333}
+.resp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.resp-card{background:#fff;border:1px solid #f0c0d8;border-radius:10px;padding:14px}
+.resp-card .name{font-weight:600;font-size:12px;margin-bottom:3px}
+.resp-card .role{font-size:11px;color:#aaa;margin-bottom:8px}
+.task-line{display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #fce4ec}
+.task-line:last-child{border-bottom:none}
+.setup-box{background:#fff;border:1.5px dashed #e8628a;border-radius:10px;padding:22px;max-width:600px;margin:30px auto;text-align:center}
+.setup-box h2{color:#c459a0;font-size:16px;margin-bottom:10px}
+.setup-box p{color:#555;font-size:13px;margin-bottom:8px;line-height:1.6}
+.setup-box input{width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:12px;font-family:inherit;margin:8px 0}
+.loader{display:inline-block;width:14px;height:14px;border:2px solid #f0c0d8;border-top-color:#c459a0;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+footer{text-align:center;padding:12px;font-size:11px;color:#aaa;background:#fff;border-top:1px solid #f0c0d8;margin-top:20px}
+@media(max-width:600px){
+  .filters{flex-direction:column}
+  .filters input,.filters select{width:100%}
+  .sync-bar{flex-direction:column;align-items:flex-start}
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>📋 Gestor de Intimações e Tarefas</h1>
+  <p>3ª Defensoria Cível de Parnamirim — Dra. Gabrielle Carvalho Ribeiro Miranda</p>
+</div>
+
+<!-- Setup inicial (aparece apenas se URL não configurada) -->
+<div class="setup-box" id="setup-box" style="display:none">
+  <h2>⚙️ Configuração inicial</h2>
+  <p>Cole abaixo a URL do seu <strong>Apps Script publicado</strong> como Web App.<br>
+  Isso conecta o sistema ao Google Sheets para salvar dados em tempo real.</p>
+  <input type="text" id="api-url-input" placeholder="https://script.google.com/macros/s/SEU_ID/exec">
+  <br>
+  <button class="btn btn-pink" onclick="saveApiUrl()">✅ Salvar e conectar</button>
+  <p style="font-size:11px;color:#aaa;margin-top:10px">
+    Não sabe como gerar essa URL? Siga o passo a passo no arquivo <strong>LEIA-ME.txt</strong> incluído.
+  </p>
+</div>
+
+<nav id="main-nav" style="display:none">
+  <button class="active" onclick="showTab('int')">📋 Intimações</button>
+  <button onclick="showTab('pend')">💖 Pendências Dra. Gabrielle <span class="pend-count" id="pend-count">0</span></button>
+  <button onclick="showTab('dash')">📊 Dashboard</button>
+  <button onclick="showTab('resp')">👥 Tarefas por Responsável</button>
+  <button onclick="showTab('ger')">📋 Gerenciar Tarefas</button>
+</nav>
+
+<!-- ── TAB INTIMAÇÕES ── -->
+<div id="tab-int" class="tab">
+  <div class="sync-bar">
+    <label>Banco de dados:</label>
+    <span id="api-url-show" style="font-size:11px;color:#888;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    <span class="sync-status sync-pend" id="sync-status">Carregando...</span>
+    <button class="btn" onclick="loadData()" style="padding:4px 10px;font-size:11px">🔄 Sincronizar</button>
+    <button class="btn" onclick="resetApiUrl()" style="padding:4px 10px;font-size:11px;color:#c62828">⚙️ Reconfigurar</button>
+  </div>
+  <div class="filters">
+    <input type="text" id="srch" placeholder="🔍 Buscar processo, partes, tipo..." oninput="renderTable()">
+    <select id="fst" onchange="renderTable()">
+      <option value="">Status: Todos</option>
+      <option value="Vencido">Vencidos</option>
+      <option value="Pendente">Pendentes</option>
+      <option value="Próximo">Próximos (3 dias)</option>
+      <option value="Ok">Ok</option>
+    </select>
+    <select id="fci" onchange="renderTable()">
+      <option value="">Ciência: Todos</option>
+      <option value="Sim">Com ciência</option>
+      <option value="Não">Sem ciência</option>
+    </select>
+    <select id="fre" onchange="renderTable()">
+      <option value="">Responsável: Todos</option>
+    </select>
+    <button class="btn btn-pink" onclick="openModal('nova')">➕ Nova Intimação</button>
+    <button class="btn" onclick="exportCSV()">📥 Exportar CSV</button>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortBy('processo')">Nº Processo ↕</th>
+          <th onclick="sortBy('partes')">Partes ↕</th>
+          <th onclick="sortBy('tipo')">Tipo ↕</th>
+          <th>Descrição</th>
+          <th onclick="sortBy('dataLimite')">Data Limite ↕</th>
+          <th onclick="sortBy('ciencia')">Ciência ↕</th>
+          <th onclick="sortBy('responsavel')">Responsável ↕</th>
+          <th onclick="sortBy('statusTarefa')">Tarefa ↕</th>
+          <th onclick="sortBy('_status')">Status ↕</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="int-body">
+        <tr><td colspan="10" style="text-align:center;padding:30px;color:#aaa"><span class="loader"></span>Carregando dados...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── TAB PENDÊNCIAS ── -->
+<div id="tab-pend" class="tab">
+  <div class="alert-banner">⚠️ Estes processos aguardam ciência da Dra. Gabrielle.</div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Nº Processo</th><th>Partes</th><th>Tipo</th><th>Descrição</th><th>Data Limite</th><th>Ações</th></tr></thead>
+      <tbody id="pend-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── TAB DASHBOARD ── -->
+<div id="tab-dash" class="tab">
+  <div class="cards-grid" id="dash-cards"></div>
+  <div class="chart-area"><h4>Intimações por status</h4><div id="chart-status"></div></div>
+  <div class="chart-area"><h4>Tarefas por responsável (top 8)</h4><div id="chart-resp"></div></div>
+  <div class="chart-area"><h4>Tipos de intimação</h4><div id="chart-tipo"></div></div>
+</div>
+
+<!-- ── TAB RESPONSÁVEL ── -->
+<div id="tab-resp" class="tab">
+  <div class="section-title">Tarefas distribuídas por servidor</div>
+  <div class="resp-grid" id="resp-cards"></div>
+</div>
+
+<!-- ── TAB GERENCIAR TAREFAS ── -->
+<div id="tab-ger" class="tab">
+  <div class="filters">
+    <input type="text" id="ger-srch" placeholder="🔍 Buscar..." oninput="renderGer()">
+    <select id="ger-st" onchange="renderGer()">
+      <option value="">Status: Todos</option>
+      <option value="Aberta">Abertas</option>
+      <option value="Em andamento">Em andamento</option>
+      <option value="Concluída">Concluídas</option>
+    </select>
+    <button class="btn" onclick="exportCSV()">📥 Exportar CSV</button>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Processo</th><th>Partes</th><th>Responsável</th><th>Descrição da Tarefa</th><th>Status</th><th>Ações</th></tr></thead>
+      <tbody id="ger-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── MODAL NOVA INTIMAÇÃO ── -->
+<div class="modal-overlay" id="modal-nova" onclick="if(event.target===this)closeModal('nova')">
+  <div class="modal-box">
+    <h3>➕ Nova Intimação</h3>
+    <div class="form-row"><label>Nº Processo *</label><input id="n-proc" type="text" placeholder="0000000-00.0000.0.00.0000"></div>
+    <div class="form-row"><label>Partes *</label><input id="n-partes" type="text"></div>
+    <div class="form-row"><label>Tipo</label>
+      <select id="n-tipo"><option>Decisão</option><option>Despacho</option><option>Sentença</option><option>Citação</option><option>Intimação</option><option>Outro</option></select>
+    </div>
+    <div class="form-row"><label>Descrição</label><textarea id="n-desc"></textarea></div>
+    <div class="form-row"><label>Data Limite</label><input id="n-data" type="date"></div>
+    <div class="form-row"><label>Ciência Dra. Gabrielle</label>
+      <select id="n-cien"><option value="Não">Não</option><option value="Sim">Sim</option></select>
+    </div>
+    <div class="form-row"><label>Responsável pela Tarefa</label><select id="n-resp"></select></div>
+    <div class="form-row"><label>Descrição da Tarefa</label><textarea id="n-dtarefa"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('nova')">Cancelar</button>
+      <button class="btn btn-pink" onclick="saveNova()">✅ Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL GERENCIAR TAREFA ── -->
+<div class="modal-overlay" id="modal-tarefa" onclick="if(event.target===this)closeModal('tarefa')">
+  <div class="modal-box">
+    <h3>📋 Gerenciar Tarefa</h3>
+    <div class="form-row"><label>Processo</label><input id="t-proc" type="text" readonly></div>
+    <div class="form-row"><label>Partes</label><input id="t-partes" type="text" readonly></div>
+    <div class="form-row"><label>Responsável</label><select id="t-resp"></select></div>
+    <div class="form-row"><label>Descrição da Tarefa</label><textarea id="t-desc"></textarea></div>
+    <div class="form-row"><label>Status da Tarefa</label>
+      <select id="t-status"><option>Aberta</option><option>Em andamento</option><option>Concluída</option></select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('tarefa')">Cancelar</button>
+      <button class="btn btn-pink" onclick="saveTask()">✅ Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL EDITAR INTIMAÇÃO ── -->
+<div class="modal-overlay" id="modal-edit" onclick="if(event.target===this)closeModal('edit')">
+  <div class="modal-box">
+    <h3>✏️ Editar Intimação</h3>
+    <div class="form-row"><label>Nº Processo</label><input id="e-proc" type="text" readonly></div>
+    <div class="form-row"><label>Partes</label><input id="e-partes" type="text"></div>
+    <div class="form-row"><label>Tipo</label>
+      <select id="e-tipo"><option>Decisão</option><option>Despacho</option><option>Sentença</option><option>Citação</option><option>Intimação</option><option>Outro</option></select>
+    </div>
+    <div class="form-row"><label>Descrição</label><textarea id="e-desc"></textarea></div>
+    <div class="form-row"><label>Data Limite</label><input id="e-data" type="date"></div>
+    <div class="form-row"><label>Ciência Dra. Gabrielle</label>
+      <select id="e-cien"><option value="Não">Não</option><option value="Sim">Sim</option></select>
+    </div>
+    <div class="form-row"><label>Data da Ciência</label><input id="e-dcien" type="date"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('edit')">Cancelar</button>
+      <button class="btn btn-pink" onclick="saveEdit()">✅ Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL DETALHES ── -->
+<div class="modal-overlay" id="modal-det" onclick="if(event.target===this)closeModal('det')">
+  <div class="modal-box" id="modal-det-body"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<footer>
+  Última sincronização: <span id="last-sync">—</span> &nbsp;|&nbsp;
+  Gestor de Intimações — 3ª Defensoria Cível de Parnamirim
+</footer>
+
+<script>
+// ── Configuração ──────────────────────────────────────────────
+const SERVIDORES = [
+  "Alex Cristhian Rodrigues de Medeiros",
+  "Ana Beatriz Souza Lima",
+  "Carlos Eduardo Fernandes",
+  "Fernanda Cristina Moura",
+  "João Pedro Alves Silva",
+  "Larissa Gonçalves Costa",
+  "Lucas Henrique Barbosa",
+  "Maria José Santos",
+  "Patricia Oliveira Nunes",
+  "Rafael Augusto Mendes",
+  "Roberta Cavalcanti",
+  "Silvio Martins Júnior",
+  "Tâmara Vieira Lopes",
+  "Vanessa Rodrigues Pinto"
+];
+
+const HEADERS = ["processo","partes","tipo","descricao","dataLimite","ciencia","dataCiencia","responsavel","descTarefa","statusTarefa"];
+
+let data = [];
+let sortCol = '';
+let sortAsc = true;
+let taskIdx = -1;
+let editIdx = -1;
+
+// ── API URL ───────────────────────────────────────────────────
+function getApiUrl() { return localStorage.getItem('api_url') || ''; }
+function saveApiUrl() {
+  const url = document.getElementById('api-url-input').value.trim();
+  if (!url.startsWith('https://script.google.com')) {
+    toast('❌ URL inválida. Use a URL do Apps Script.', 'err'); return;
+  }
+  localStorage.setItem('api_url', url);
+  init();
+}
+function resetApiUrl() {
+  if (!confirm('Reconfigurar a URL do banco de dados?')) return;
+  localStorage.removeItem('api_url');
+  location.reload();
+}
+
+// ── Init ──────────────────────────────────────────────────────
+function init() {
+  const url = getApiUrl();
+  if (!url) {
+    document.getElementById('setup-box').style.display = 'block';
+    document.getElementById('main-nav').style.display = 'none';
+    document.querySelectorAll('.tab').forEach(t => t.style.display = 'none');
+    return;
+  }
+  document.getElementById('setup-box').style.display = 'none';
+  document.getElementById('main-nav').style.display = 'flex';
+  document.getElementById('tab-int').style.display = 'block';
+  document.getElementById('api-url-show').textContent = url;
+  populateSelects();
+  loadData();
+}
+
+// ── Carregar dados ────────────────────────────────────────────
+async function loadData() {
+  setSyncStatus('pend', 'Carregando...');
+  try {
+    const res = await fetch(getApiUrl() + '?action=getAll');
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    data = json.data || [];
+    setSyncStatus('ok', 'Sincronizado');
+    document.getElementById('last-sync').textContent = new Date().toLocaleString('pt-BR');
+    renderAll();
+    toast('✅ Dados carregados: ' + data.length + ' intimações');
+  } catch(e) {
+    setSyncStatus('err', 'Erro de conexão');
+    toast('❌ Erro ao carregar: ' + e.message, 'err');
+    // Tenta localStorage como fallback
+    const local = localStorage.getItem('inti_cache');
+    if (local) { data = JSON.parse(local); renderAll(); }
+  }
+}
+
+// ── Salvar no Sheets ──────────────────────────────────────────
+async function saveData(msg) {
+  localStorage.setItem('inti_cache', JSON.stringify(data));
+  setSyncStatus('pend', 'Salvando...');
+  try {
+    const res = await fetch(getApiUrl(), {
+      method: 'POST',
+      body: JSON.stringify({ action: 'saveAll', data })
+    });
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    setSyncStatus('ok', 'Salvo');
+    document.getElementById('last-sync').textContent = new Date().toLocaleString('pt-BR');
+    toast(msg || '✅ Salvo com sucesso!');
+  } catch(e) {
+    setSyncStatus('err', 'Erro ao salvar');
+    toast('⚠️ Salvo localmente. Erro ao sincronizar: ' + e.message, 'err');
+  }
+}
+
+// ── Status da data ────────────────────────────────────────────
+const today = new Date(); today.setHours(0,0,0,0);
+function getStatus(r) {
+  if (!r.dataLimite) return 'Ok';
+  const d = new Date(r.dataLimite + 'T00:00:00');
+  const diff = (d - today) / 86400000;
+  if (diff < 0) return 'Vencido';
+  if (diff <= 3) return 'Próximo';
+  return 'Pendente';
+}
+
+// ── Badges ────────────────────────────────────────────────────
+function statusBadge(s) {
+  const m = {Vencido:'badge-venc',Pendente:'badge-ab',Próximo:'badge-and',Ok:'badge-ok'};
+  return `<span class="badge ${m[s]||'badge-ab'}">${s}</span>`;
+}
+function taskBadge(s) {
+  if (!s) return '<span style="color:#ccc;font-size:11px">—</span>';
+  const m = {Aberta:'badge-ab',Concluída:'badge-conc','Em andamento':'badge-and'};
+  return `<span class="badge ${m[s]||'badge-ab'}">${s}</span>`;
+}
+function cienciaBadge(c) {
+  return c==='Sim'?'<span class="badge badge-ok">✓ Sim</span>':'<span class="badge badge-nao">✗ Não</span>';
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  const p = d.split('-');
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d;
+}
+
+// ── Filtro + Ordenação ────────────────────────────────────────
+function filtered() {
+  const q  = (document.getElementById('srch')||{value:''}).value.toLowerCase();
+  const fst= (document.getElementById('fst') ||{value:''}).value;
+  const fci= (document.getElementById('fci') ||{value:''}).value;
+  const fre= (document.getElementById('fre') ||{value:''}).value;
+  return data.filter(r => {
+    const s = getStatus(r);
+    if (fst && s !== fst) return false;
+    if (fci && r.ciencia !== fci) return false;
+    if (fre && r.responsavel !== fre) return false;
+    if (q && ![r.processo,r.partes,r.tipo,r.descricao,r.responsavel].some(v=>(v||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+}
+
+function sortBy(col) {
+  if (sortCol === col) sortAsc = !sortAsc; else { sortCol = col; sortAsc = true; }
+  renderTable();
+}
+
+// ── Render Intimações ─────────────────────────────────────────
+function renderTable() {
+  let rows = filtered();
+  if (sortCol) {
+    rows.sort((a,b) => {
+      let va = sortCol==='_status' ? getStatus(a) : (a[sortCol]||'');
+      let vb = sortCol==='_status' ? getStatus(b) : (b[sortCol]||'');
+      return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+  }
+  const tb = document.getElementById('int-body');
+  if (!rows.length) {
+    tb.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:30px;color:#aaa">Nenhuma intimação encontrada.</td></tr>';
+    return;
+  }
+  tb.innerHTML = rows.map(r => {
+    const gi = data.indexOf(r);
+    const s  = getStatus(r);
+    return `<tr>
+      <td style="font-size:11px">${r.processo}</td>
+      <td>${r.partes}</td>
+      <td>${r.tipo}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.descricao}">${r.descricao}</td>
+      <td>${fmtDate(r.dataLimite)}</td>
+      <td>${cienciaBadge(r.ciencia)}</td>
+      <td style="font-size:11px">${r.responsavel||'<span style="color:#ccc">—</span>'}</td>
+      <td>${taskBadge(r.statusTarefa)}</td>
+      <td>${statusBadge(s)}</td>
+      <td style="white-space:nowrap">
+        <button class="act-btn" onclick="viewDet(${gi})">👁 Ver</button>
+        <button class="act-btn" onclick="openEdit(${gi})">✏️ Editar</button>
+        <button class="act-btn" onclick="doCiencia(${gi})">${r.ciencia==='Sim'?'✓ Ciência':'Dar ciência'}</button>
+        <button class="act-btn" onclick="openTask(${gi})">📋 Tarefa</button>
+        <button class="act-btn" onclick="delRow(${gi})" style="color:#c62828">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Render Pendências ─────────────────────────────────────────
+function renderPend() {
+  const pend = data.filter(r => r.ciencia !== 'Sim');
+  document.getElementById('pend-count').textContent = pend.length;
+  document.getElementById('pend-body').innerHTML = pend.length ? pend.map(r => {
+    const gi = data.indexOf(r);
+    return `<tr>
+      <td style="font-size:11px">${r.processo}</td><td>${r.partes}</td><td>${r.tipo}</td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.descricao}</td>
+      <td>${fmtDate(r.dataLimite)}</td>
+      <td><button class="act-btn btn-pink" onclick="doCiencia(${gi})" style="font-size:11px">✅ Dar ciência</button></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="6" style="text-align:center;padding:20px;color:#2e7d32">✅ Nenhuma pendência!</td></tr>';
+}
+
+// ── Render Dashboard ──────────────────────────────────────────
+function renderDash() {
+  const total  = data.length;
+  const pend   = data.filter(r => r.ciencia !== 'Sim').length;
+  const venc   = data.filter(r => getStatus(r) === 'Vencido').length;
+  const okT    = data.filter(r => r.statusTarefa === 'Concluída').length;
+  const abT    = data.filter(r => r.statusTarefa === 'Aberta').length;
+  const andT   = data.filter(r => r.statusTarefa === 'Em andamento').length;
+  document.getElementById('dash-cards').innerHTML = `
+    <div class="metric-card"><div class="lbl">Total de intimações</div><div class="val">${total}</div></div>
+    <div class="metric-card pink"><div class="lbl">Pendentes de ciência</div><div class="val">${pend}</div></div>
+    <div class="metric-card red"><div class="lbl">Prazo vencido</div><div class="val">${venc}</div></div>
+    <div class="metric-card green"><div class="lbl">Tarefas concluídas</div><div class="val">${okT}</div></div>
+    <div class="metric-card amber"><div class="lbl">Tarefas abertas</div><div class="val">${abT}</div></div>
+    <div class="metric-card blue"><div class="lbl">Em andamento</div><div class="val">${andT}</div></div>`;
+
+  const sc = {Vencido:0,Próximo:0,Pendente:0,Ok:0};
+  data.forEach(r => { sc[getStatus(r)] = (sc[getStatus(r)]||0)+1; });
+  const mxS = Math.max(...Object.values(sc),1);
+  const scol = {Vencido:'#e8628a',Próximo:'#f57f17',Pendente:'#c459a0',Ok:'#43a047'};
+  document.getElementById('chart-status').innerHTML = Object.entries(sc).map(([k,v]) =>
+    `<div class="bar-row"><div class="bar-lbl">${k}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/mxS*100)}%;background:${scol[k]}"></div></div><div class="bar-num">${v}</div></div>`
+  ).join('');
+
+  const rc = {};
+  data.filter(r=>r.responsavel).forEach(r => { rc[r.responsavel] = (rc[r.responsavel]||0)+1; });
+  const sorted = Object.entries(rc).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const mxR = sorted[0]?sorted[0][1]:1;
+  document.getElementById('chart-resp').innerHTML = sorted.map(([k,v]) =>
+    `<div class="bar-row"><div class="bar-lbl" title="${k}">${k.split(' ').slice(0,2).join(' ')}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/mxR*100)}%;background:#c459a0"></div></div><div class="bar-num">${v}</div></div>`
+  ).join('') || '<p style="color:#aaa;font-size:12px">Nenhuma tarefa atribuída.</p>';
+
+  const tc = {};
+  data.forEach(r => { tc[r.tipo] = (tc[r.tipo]||0)+1; });
+  const mxT = Math.max(...Object.values(tc),1);
+  const tcol = ['#c459a0','#1565c0','#2e7d32','#f57f17','#c62828','#555'];
+  document.getElementById('chart-tipo').innerHTML = Object.entries(tc).map(([k,v],i) =>
+    `<div class="bar-row"><div class="bar-lbl">${k}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/mxT*100)}%;background:${tcol[i%tcol.length]}"></div></div><div class="bar-num">${v}</div></div>`
+  ).join('');
+}
+
+// ── Render Responsável ────────────────────────────────────────
+function renderResp() {
+  const map = {};
+  SERVIDORES.forEach(s => { map[s] = {total:0,ab:0,and:0,conc:0}; });
+  data.forEach(r => {
+    if (r.responsavel && map[r.responsavel]) {
+      map[r.responsavel].total++;
+      if (r.statusTarefa==='Aberta') map[r.responsavel].ab++;
+      else if (r.statusTarefa==='Em andamento') map[r.responsavel].and++;
+      else if (r.statusTarefa==='Concluída') map[r.responsavel].conc++;
+    }
+  });
+  document.getElementById('resp-cards').innerHTML = SERVIDORES.map(s => {
+    const m = map[s];
+    return `<div class="resp-card">
+      <div class="name">${s.split(' ').slice(0,2).join(' ')}</div>
+      <div class="role">${s.split(' ').slice(2).join(' ')}</div>
+      <div class="task-line"><span>Total atribuídas</span><span><strong>${m.total}</strong></span></div>
+      <div class="task-line"><span>Abertas</span><span style="color:#f57f17">${m.ab}</span></div>
+      <div class="task-line"><span>Em andamento</span><span style="color:#1565c0">${m.and}</span></div>
+      <div class="task-line"><span>Concluídas</span><span style="color:#2e7d32">${m.conc}</span></div>
+    </div>`;
+  }).join('');
+}
+
+// ── Render Gerenciar Tarefas ──────────────────────────────────
+function renderGer() {
+  const q  = document.getElementById('ger-srch').value.toLowerCase();
+  const st = document.getElementById('ger-st').value;
+  const rows = data.filter(r => r.responsavel).filter(r => {
+    if (st && r.statusTarefa !== st) return false;
+    if (q && ![r.processo,r.partes,r.responsavel,r.descTarefa].some(v=>(v||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+  document.getElementById('ger-body').innerHTML = rows.length ? rows.map(r => {
+    const gi = data.indexOf(r);
+    return `<tr>
+      <td style="font-size:11px">${r.processo}</td>
+      <td>${r.partes}</td>
+      <td style="font-size:11px">${r.responsavel}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.descTarefa||'—'}</td>
+      <td>${taskBadge(r.statusTarefa)}</td>
+      <td>
+        <button class="act-btn" onclick="openTask(${gi})">✏️ Editar</button>
+        <select style="font-size:11px;padding:3px 6px;border:1px solid #ddd;border-radius:5px;background:#fff" onchange="quickStatus(${gi},this.value)">
+          <option value="">Alterar status...</option>
+          <option>Aberta</option><option>Em andamento</option><option>Concluída</option>
+        </select>
+      </td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="6" style="text-align:center;padding:20px;color:#aaa">Nenhuma tarefa encontrada.</td></tr>';
+}
+
+// ── Ações ─────────────────────────────────────────────────────
+function viewDet(idx) {
+  const r = data[idx];
+  document.getElementById('modal-det-body').innerHTML = `
+    <h3>👁 Detalhes da Intimação</h3>
+    <div style="display:grid;gap:10px;margin-bottom:16px">
+      ${[['Processo',r.processo],['Partes',r.partes],['Tipo',r.tipo],['Descrição',r.descricao],
+         ['Data Limite',fmtDate(r.dataLimite)],['Status',getStatus(r)],
+         ['Ciência',r.ciencia],['Data Ciência',fmtDate(r.dataCiencia)],
+         ['Responsável',r.responsavel||'—'],['Desc. Tarefa',r.descTarefa||'—'],
+         ['Status Tarefa',r.statusTarefa||'—']].map(([k,v])=>
+        `<div style="display:flex;gap:12px;padding:6px 0;border-bottom:1px solid #fce4ec">
+          <div style="font-size:11px;color:#aaa;min-width:110px;font-weight:600">${k}</div>
+          <div style="font-size:12px">${v}</div>
+        </div>`).join('')}
+    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('det')">Fechar</button></div>`;
+  openModal('det');
+}
+
+function openEdit(idx) {
+  editIdx = idx;
+  const r = data[idx];
+  document.getElementById('e-proc').value   = r.processo;
+  document.getElementById('e-partes').value = r.partes;
+  document.getElementById('e-tipo').value   = r.tipo;
+  document.getElementById('e-desc').value   = r.descricao;
+  document.getElementById('e-data').value   = r.dataLimite;
+  document.getElementById('e-cien').value   = r.ciencia || 'Não';
+  document.getElementById('e-dcien').value  = r.dataCiencia || '';
+  openModal('edit');
+}
+
+function saveEdit() {
+  if (editIdx < 0) return;
+  data[editIdx].partes      = document.getElementById('e-partes').value;
+  data[editIdx].tipo        = document.getElementById('e-tipo').value;
+  data[editIdx].descricao   = document.getElementById('e-desc').value;
+  data[editIdx].dataLimite  = document.getElementById('e-data').value;
+  data[editIdx].ciencia     = document.getElementById('e-cien').value;
+  data[editIdx].dataCiencia = document.getElementById('e-dcien').value;
+  closeModal('edit'); editIdx = -1;
+  saveData('✅ Intimação atualizada!').then(() => renderAll());
+}
+
+function doCiencia(idx) {
+  data[idx].ciencia     = 'Sim';
+  data[idx].dataCiencia = new Date().toISOString().split('T')[0];
+  saveData('✅ Ciência registrada!').then(() => renderAll());
+}
+
+function openTask(idx) {
+  taskIdx = idx;
+  const r = data[idx];
+  document.getElementById('t-proc').value   = r.processo;
+  document.getElementById('t-partes').value = r.partes;
+  document.getElementById('t-resp').value   = r.responsavel || '';
+  document.getElementById('t-desc').value   = r.descTarefa || '';
+  document.getElementById('t-status').value = r.statusTarefa || 'Aberta';
+  openModal('tarefa');
+}
+
+function saveTask() {
+  if (taskIdx < 0) return;
+  data[taskIdx].responsavel  = document.getElementById('t-resp').value;
+  data[taskIdx].descTarefa   = document.getElementById('t-desc').value;
+  data[taskIdx].statusTarefa = document.getElementById('t-status').value;
+  closeModal('tarefa'); taskIdx = -1;
+  saveData('✅ Tarefa salva!').then(() => renderAll());
+}
+
+function quickStatus(idx, val) {
+  if (!val) return;
+  data[idx].statusTarefa = val;
+  saveData('✅ Status atualizado!').then(() => renderAll());
+}
+
+function delRow(idx) {
+  if (!confirm('Deletar a intimação "' + data[idx].processo + '"?\nEsta ação não pode ser desfeita.')) return;
+  data.splice(idx, 1);
+  saveData('🗑 Intimação removida!').then(() => renderAll());
+}
+
+function saveNova() {
+  const proc = document.getElementById('n-proc').value.trim();
+  const part = document.getElementById('n-partes').value.trim();
+  if (!proc || !part) { toast('❌ Preencha Processo e Partes.', 'err'); return; }
+  const r = {
+    processo:    proc,
+    partes:      part,
+    tipo:        document.getElementById('n-tipo').value,
+    descricao:   document.getElementById('n-desc').value,
+    dataLimite:  document.getElementById('n-data').value,
+    ciencia:     document.getElementById('n-cien').value,
+    dataCiencia: document.getElementById('n-cien').value==='Sim' ? new Date().toISOString().split('T')[0] : '',
+    responsavel: document.getElementById('n-resp').value,
+    descTarefa:  document.getElementById('n-dtarefa').value,
+    statusTarefa:document.getElementById('n-resp').value ? 'Aberta' : ''
+  };
+  data.unshift(r);
+  closeModal('nova');
+  // limpar campos
+  ['n-proc','n-partes','n-desc','n-dtarefa'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('n-data').value='';
+  saveData('✅ Intimação adicionada!').then(() => renderAll());
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function renderAll() {
+  renderTable();
+  renderPend();
+  if (document.getElementById('tab-dash').classList.contains('active')) renderDash();
+  if (document.getElementById('tab-resp').classList.contains('active')) renderResp();
+  if (document.getElementById('tab-ger').classList.contains('active'))  renderGer();
+}
+
+function showTab(id) {
+  const ids = ['int','pend','dash','resp','ger'];
+  document.querySelectorAll('nav button').forEach((b,i) => b.classList.toggle('active', ids[i]===id));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  if (id==='pend') renderPend();
+  if (id==='dash') renderDash();
+  if (id==='resp') renderResp();
+  if (id==='ger')  renderGer();
+}
+
+function openModal(id)  { document.getElementById('modal-'+id).classList.add('open'); }
+function closeModal(id) { document.getElementById('modal-'+id).classList.remove('open'); }
+
+function setSyncStatus(type, text) {
+  const el = document.getElementById('sync-status');
+  el.className = 'sync-status sync-' + type;
+  el.textContent = text;
+}
+
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = type==='err' ? '#c62828' : '#222';
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function exportCSV() {
+  const rows = [HEADERS.map(h => {
+    const labels = {processo:'Processo',partes:'Partes',tipo:'Tipo',descricao:'Descrição',dataLimite:'Data Limite',ciencia:'Ciência',dataCiencia:'Data Ciência',responsavel:'Responsável',descTarefa:'Desc. Tarefa',statusTarefa:'Status Tarefa'};
+    return labels[h]||h;
+  })];
+  data.forEach(r => rows.push(HEADERS.map(h => r[h]||'')));
+  const csv = rows.map(r => r.map(c => '"'+(c||'').replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download = 'intimacoes_' + new Date().toLocaleDateString('pt-BR').replace(/\//g,'-') + '.csv';
+  a.click();
+}
+
+function populateSelects() {
+  ['fre','n-resp','t-resp'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const base = id==='fre' ? '<option value="">Responsável: Todos</option>' : '<option value="">— sem responsável —</option>';
+    el.innerHTML = base + SERVIDORES.map(s => `<option value="${s}">${s}</option>`).join('');
+  });
+}
+
+// ── Iniciar ───────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
